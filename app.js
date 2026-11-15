@@ -11,11 +11,11 @@ const LEAD_API = '';
 const SOURCE = 'chand-sobh';
 
 const PARTS = [
-  { src: 'media/p1.mp4', label: '۰۱' },
-  { src: 'media/p2.mp4', label: '۰۲' },
-  { src: 'media/p3.mp4', label: '۰۳' },
-  { src: 'media/p4.mp4', label: '۰۴' },
-  { src: 'media/p5.mp4', label: '۰۵' },
+  { src: 'media/p1.mp4?v=2', label: '۰۱' },
+  { src: 'media/p2.mp4?v=2', label: '۰۲' },
+  { src: 'media/p3.mp4?v=2', label: '۰۳' },
+  { src: 'media/p4.mp4?v=2', label: '۰۴' },
+  { src: 'media/p5.mp4?v=2', label: '۰۵' },
 ];
 const VOICE = { age: 'media/v_age.mp3', choice: 'media/v_choice.mp3', cta: 'media/v_cta.mp3', ok: 'media/v_ok.mp3' };
 const ALARM = 'media/alarm.mp3';
@@ -143,6 +143,15 @@ vids.forEach((v) => {
   v.addEventListener('playing', () => { loading.classList.add('hidden'); pausedHint.classList.add('hidden'); });
   v.addEventListener('error', () => { if (v === video() && phase === 'play') { loading.classList.add('hidden'); toast('بارگذاری ویدئو کامل نشد. دوباره بزن تا ادامه پیدا کند.'); } });
 });
+// parts that run straight into the next one (2 → 3, 4 → 5) start the next a moment early, so there is no gap or freeze
+let swappedFrom = -1;
+(function tick() {
+  if (phase === 'play' && (part === 1 || part === 3) && swappedFrom !== part) {
+    const v = video();
+    if (!v.paused && v.duration && v.duration - v.currentTime < 0.08) { swappedFrom = part; cur = 1 - cur; playPart(part + 1); }
+  }
+  requestAnimationFrame(tick);
+})();
 $('#screen').addEventListener('click', (e) => {
   if (phase !== 'play' || e.target.closest('button')) return;
   const v = video();
@@ -223,7 +232,7 @@ async function share() {
 mini.addEventListener('click', (e) => { e.stopPropagation(); video().pause(); toCta(); });
 function toCta() { phase = 'cta'; render(); say('cta'); }
 function restart() {
-  stopVoice(); cur = 0; pick = -1;
+  stopVoice(); cur = 0; pick = -1; swappedFrom = -1;
   vids.forEach((v) => { v.pause(); v.removeAttribute('src'); delete v.dataset.part; v.load(); });
   load(other(), 1);
   playPart(0);
